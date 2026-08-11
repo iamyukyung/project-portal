@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  /* iOS reports these only when the viewport is set to `viewport-fit: cover`. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  /* Stops the pull-to-refresh and rubber-band gestures from reaching the page
+     while the player is dragging the joystick. */
+  overscroll-behavior: none;
+  background: #0f2027;
+}
+
+body {
+  /* Fixing the body is the reliable way to keep iOS Safari from scrolling the
+     document itself; the game never needs document scroll. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  /* Tracks the visible area as mobile browser chrome collapses. */
+  height: 100dvh;
+  overflow: hidden;
+  /* Scoped to the play surface rather than a global preventDefault, so the
+     browser still handles gestures outside the game. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.game-root canvas {
+  display: block;
+  touch-action: none;
+}
+
+/* Toggled while the mouse is over the walkable ground — the lightest possible
+   signal that clicking there will take you somewhere. */
+.game-root.is-over-ground canvas {
+  cursor: pointer;
+}
+
+@keyframes portal-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
