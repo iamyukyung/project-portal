@@ -15,6 +15,9 @@ import { ControlsHint } from "@/components/ui/ControlsHint";
 import { FloatingJoystick } from "@/components/ui/FloatingJoystick";
 import { HUD } from "@/components/ui/HUD";
 import { IntroScreen } from "@/components/ui/IntroScreen";
+import { Minimap } from "@/components/ui/Minimap";
+import { PortalBanner } from "@/components/ui/PortalBanner";
+import { RuneSheet } from "@/components/ui/RuneSheet";
 import {
   usePrefersReducedMotion,
   useResponsiveGameSettings,
@@ -26,6 +29,17 @@ import { CAMERA_DIR, PLAYER, SPAWN } from "@/lib/worldLayout";
 
 /** Matches the intro camera travel in FollowCamera. */
 const INTRO_TRAVEL_MS = 1100;
+
+/**
+ * Portal activation, start to finish in ~3.3s: the rune absorbs, a beat of
+ * nothing, the camera swings to the gate as it lights, the line lands, then
+ * the camera comes back and control returns. Reduced motion keeps the beats
+ * but drops the camera move, so it runs shorter.
+ */
+const ACTIVATION_STEPS = {
+  full: { focusPortal: 350, bannerIn: 1150, bannerOut: 2500, focusPlayer: 2650, done: 3300 },
+  reduced: { bannerIn: 150, bannerOut: 1500, done: 1800 },
+} as const;
 
 /**
  * WebGL support never changes for the life of the document, so the store is a
@@ -62,6 +76,11 @@ export function GameCanvas() {
   const reducedMotion = usePrefersReducedMotion();
   const phase = useGameStore((state) => state.phase);
   const setControlsEnabled = useGameStore((state) => state.setControlsEnabled);
+  const setCameraFocus = useGameStore((state) => state.setCameraFocus);
+  const setBannerVisible = useGameStore((state) => state.setBannerVisible);
+  const finishPortalActivation = useGameStore(
+    (state) => state.finishPortalActivation,
+  );
 
   const webglSupported = useSyncExternalStore(
     subscribeWebGL,
@@ -89,6 +108,38 @@ export function GameCanvas() {
     const timer = setTimeout(() => setControlsEnabled(true), INTRO_TRAVEL_MS);
     return () => clearTimeout(timer);
   }, [phase, reducedMotion, setControlsEnabled]);
+
+  // The portal activation sequence. Entering PORTAL_OPEN is already latched by
+  // the store, so this can only ever run once per session.
+  useEffect(() => {
+    if (phase !== "PORTAL_OPEN") return;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (ms: number, run: () => void) =>
+      timers.push(setTimeout(run, ms));
+
+    if (reducedMotion) {
+      const step = ACTIVATION_STEPS.reduced;
+      at(step.bannerIn, () => setBannerVisible(true));
+      at(step.bannerOut, () => setBannerVisible(false));
+      at(step.done, finishPortalActivation);
+    } else {
+      const step = ACTIVATION_STEPS.full;
+      at(step.focusPortal, () => setCameraFocus("portal"));
+      at(step.bannerIn, () => setBannerVisible(true));
+      at(step.bannerOut, () => setBannerVisible(false));
+      at(step.focusPlayer, () => setCameraFocus("player"));
+      at(step.done, finishPortalActivation);
+    }
+
+    return () => timers.forEach(clearTimeout);
+  }, [
+    phase,
+    reducedMotion,
+    setCameraFocus,
+    setBannerVisible,
+    finishPortalActivation,
+  ]);
 
   // Only read at Canvas creation; FollowCamera owns the camera afterwards.
   const initialCamera = useMemo(() => {
@@ -135,6 +186,13 @@ export function GameCanvas() {
       )}
 
       <HUD reducedMotion={reducedMotion} />
+      {settings && (
+        <Minimap
+          isTouch={settings.isTouch}
+          isPortrait={settings.isPortrait}
+          reducedMotion={reducedMotion}
+        />
+      )}
       <IntroScreen
         isTouch={settings?.isTouch ?? false}
         reducedMotion={reducedMotion}
@@ -143,6 +201,11 @@ export function GameCanvas() {
         isTouch={settings?.isTouch ?? false}
         reducedMotion={reducedMotion}
       />
+      <RuneSheet
+        isTouch={settings?.isTouch ?? false}
+        reducedMotion={reducedMotion}
+      />
+      <PortalBanner reducedMotion={reducedMotion} />
       {settings?.isTouch && <FloatingJoystick />}
     </div>
   );

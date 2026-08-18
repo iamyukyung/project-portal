@@ -106,8 +106,10 @@ export const COLORS = {
   grass: ["#79a44f", "#8cb75c", "#6c9748"],
   mountain: ["#7f9a86", "#6f8a79"],
   stone: "#a3a89e",
-  portal: "#7d8fd8",
-  portalEmissive: "#2d3a76",
+  /** The portal ring lerps between these as runes are collected. */
+  portalDormant: "#8f959d",
+  portalActive: "#7d8fd8",
+  portalGlow: "#4a63d8",
   rune: "#e3c66d",
   runeEmissive: "#6b5320",
   player: {

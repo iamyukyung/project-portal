@@ -6,6 +6,7 @@ import { CapsuleCollider, RigidBody, type RapierRigidBody } from "@react-three/r
 import * as THREE from "three";
 
 import { readMoveVector } from "@/hooks/usePlayerInput";
+import { publishPlayerTransform } from "@/lib/playerTransform";
 import { useGameStore } from "@/store/gameStore";
 import {
   COLORS,
@@ -191,6 +192,8 @@ export function Player({ positionRef, movement, reducedMotion }: PlayerProps) {
     }
 
     positionRef.current.set(translation.x, translation.y, translation.z);
+    // Read by the minimap outside React, so it can follow without re-rendering.
+    publishPlayerTransform(translation.x, translation.z, facing.current);
   });
 
   return (

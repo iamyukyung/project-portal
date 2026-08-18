@@ -9,6 +9,8 @@ import { FollowCamera } from "./FollowCamera";
 import { SceneEnvironment } from "./Environment";
 import { GroundPointer } from "./GroundPointer";
 import { Player } from "./Player";
+import { Portal } from "./Portal";
+import { Runes } from "./Runes";
 import { World } from "./World";
 import type { GameSettings } from "@/hooks/useResponsiveGameSettings";
 import { useGameStore } from "@/store/gameStore";
@@ -63,14 +65,18 @@ export function GameScene({
         </>
       )}
 
+      <Portal reducedMotion={reducedMotion} />
+
       <Physics gravity={[0, -22, 0]} timeStep="vary">
         <SceneReady />
-        <World reducedMotion={reducedMotion} />
+        <World />
         <Player
           positionRef={playerPosition}
           movement={settings.movement}
           reducedMotion={reducedMotion}
         />
+        {/* Inside Physics so it reads the player's post-step position. */}
+        <Runes positionRef={playerPosition} reducedMotion={reducedMotion} />
       </Physics>
     </>
   );
