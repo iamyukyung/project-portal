@@ -198,38 +198,33 @@ export function Minimap({ isTouch, isPortrait, reducedMotion }: MinimapProps) {
           }
 
           return (
+            // Identity and "already been here", side by side. A tick drawn
+            // inside a dot this small turns to mush at 92px, so they sit
+            // beside each other instead.
             <g
               key={id}
               // Mounts at the moment of discovery, so this plays exactly once.
               className={reducedMotion ? undefined : "minimap-claimed"}
+              opacity="0.72"
             >
-              <circle
-                cx={cx}
-                cy={cy}
-                r="3.1"
-                fill={rune.accent}
-                opacity="0.5"
-              />
-              <path
-                d={`M ${cx - 1.5} ${cy} l 1.1 1.2 l 2.2 -2.5`}
-                fill="none"
-                stroke="#0f2027"
-                strokeWidth="1.1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.9"
-              />
               <text
-                x={cx}
-                y={cy - 5.4}
+                x={cx - 1.6}
+                y={cy + 2.9}
                 textAnchor="middle"
-                fontSize="7"
+                fontSize="8.5"
                 fontWeight="600"
                 fill={rune.accent}
-                opacity="0.75"
               >
                 {RUNE_LETTER[id]}
               </text>
+              <path
+                d={`M ${cx + 2.4} ${cy + 0.4} l 1.3 1.5 l 2.6 -3.2`}
+                fill="none"
+                stroke={rune.accent}
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </g>
           );
         })}

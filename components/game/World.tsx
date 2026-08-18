@@ -9,9 +9,12 @@ import {
   BIG_ROCKS,
   BOUNDARY_SEGMENTS,
   COLORS,
+  FIGURE_HEADS,
+  FIGURE_HEAD_HEIGHT,
   GRASS,
   INTERIOR_TREES,
   LANDMARKS,
+  LANDMARK_PILLARS,
   LANDMARK_STONES,
   MOUNTAINS,
   SMALL_ROCKS,
@@ -108,6 +111,23 @@ export function World() {
       </Scatter>
       <Scatter items={LANDMARK_STONES} palette={COLORS.rock} yOffset={0.28}>
         <dodecahedronGeometry args={[0.6, 0]} />
+        <meshLambertMaterial flatShading />
+      </Scatter>
+
+      {/*
+        Landmark composition — ruined columns, standing figures and posts, all
+        in one instanced batch each so the three sites cost two draw calls.
+      */}
+      <Scatter items={LANDMARK_PILLARS} palette={COLORS.rock} yOffset={0.5}>
+        <cylinderGeometry args={[0.15, 0.19, 1, 6]} />
+        <meshLambertMaterial flatShading />
+      </Scatter>
+      <Scatter
+        items={FIGURE_HEADS}
+        palette={COLORS.rock}
+        yOffset={FIGURE_HEAD_HEIGHT}
+      >
+        <icosahedronGeometry args={[0.16, 0]} />
         <meshLambertMaterial flatShading />
       </Scatter>
 
