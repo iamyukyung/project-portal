@@ -58,7 +58,12 @@ export function HUD({ reducedMotion }: { reducedMotion: boolean }) {
         transition: reducedMotion ? "none" : "opacity 500ms ease 400ms",
       }}
     >
-      <span className="flex flex-col items-start">
+      {/*
+        The container stays transparent to pointers so the world underneath is
+        still tappable, but the HUD's own marks take their events — otherwise a
+        tap on the wordmark would walk the character.
+      */}
+      <span className="pointer-events-auto flex flex-col items-start">
         <span className="text-[13px] font-semibold tracking-[0.22em] text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-sm">
           PROJECT PORTAL
         </span>

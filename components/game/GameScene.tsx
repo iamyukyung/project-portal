@@ -54,16 +54,16 @@ export function GameScene({
       />
 
       {/*
-        Click-to-move is desktop only. Leaving these out on touch also leaves
-        the scene with zero interactive objects, so R3F skips raycasting
-        entirely on every pointer move — which is where the phones benefit.
+        Both platforms pick destinations off the ground, but only desktop does
+        it through R3F's own pointer events. On touch the gesture layer in the
+        DOM decides tap from drag first, so the scene keeps zero interactive
+        objects and R3F skips raycasting on every pointer move.
       */}
-      {!settings.isTouch && (
-        <>
-          <GroundPointer onHoverChange={onGroundHoverChange} />
-          <DestinationMarker reducedMotion={reducedMotion} />
-        </>
-      )}
+      <GroundPointer
+        interactive={!settings.isTouch}
+        onHoverChange={onGroundHoverChange}
+      />
+      <DestinationMarker reducedMotion={reducedMotion} />
 
       <Portal reducedMotion={reducedMotion} />
 

@@ -151,7 +151,7 @@ export function ControlsHint({
         {isTouch ? (
           <span className="flex items-center gap-2 text-[12px] tracking-wide">
             <SwipeGlyph />
-            화면을 밀어 이동하세요
+            탭해서 이동 · 드래그해서 조작
           </span>
         ) : (
           <>

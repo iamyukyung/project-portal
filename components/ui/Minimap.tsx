@@ -110,8 +110,10 @@ export function Minimap({ isTouch, isPortrait, reducedMotion }: MinimapProps) {
 
   return (
     <div
-      // Never intercepts input: the joystick and click-to-move sit underneath.
-      className="pointer-events-none fixed z-20"
+      // Takes its own pointer events so a tap on the map is never mistaken for
+      // a tap on the ground behind it. Nothing here is clickable — it simply
+      // absorbs, which is what keeps the character still.
+      className="pointer-events-auto fixed z-20"
       style={{
         ...placement,
         width: size,
