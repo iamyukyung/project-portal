@@ -10,6 +10,7 @@ import { SceneEnvironment } from "./Environment";
 import { GroundPointer } from "./GroundPointer";
 import { Player } from "./Player";
 import { Portal } from "./Portal";
+import { PortalEntry } from "./PortalEntry";
 import { Runes } from "./Runes";
 import { World } from "./World";
 import type { GameSettings } from "@/hooks/useResponsiveGameSettings";
@@ -75,8 +76,9 @@ export function GameScene({
           movement={settings.movement}
           reducedMotion={reducedMotion}
         />
-        {/* Inside Physics so it reads the player's post-step position. */}
+        {/* Inside Physics so they read the player's post-step position. */}
         <Runes positionRef={playerPosition} reducedMotion={reducedMotion} />
+        <PortalEntry positionRef={playerPosition} />
       </Physics>
     </>
   );

@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { playerTransform } from "@/lib/playerTransform";
 import { RUNES, RUNE_ORDER, type RuneId } from "@/lib/runes";
 import { COLORS, SCREEN_FORWARD, SCREEN_RIGHT, WORLD } from "@/lib/worldLayout";
-import { countRunes, useGameStore } from "@/store/gameStore";
+import { countRunes, isQuestEnding, useGameStore } from "@/store/gameStore";
 
 /** A little past the walls so nothing ever sits on the frame edge. */
 const MAP_EXTENT = WORLD.walkRadius + 1.5;
@@ -65,7 +65,9 @@ export function Minimap({ isTouch, isPortrait, reducedMotion }: MinimapProps) {
   const bannerVisible = useGameStore((state) => state.bannerVisible);
 
   const playerRef = useRef<SVGGElement>(null);
-  const visible = phase !== "LOADING" && phase !== "INTRO";
+  // Retired along with the rest of the gameplay HUD once the quest is ending.
+  const visible =
+    phase !== "LOADING" && phase !== "INTRO" && !isQuestEnding(phase);
 
   // The only per-frame work in the whole component, and it touches one
   // attribute on one node — React never re-renders for player movement.

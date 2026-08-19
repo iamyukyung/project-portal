@@ -1,7 +1,7 @@
 "use client";
 
 import { RUNES, RUNE_ORDER } from "@/lib/runes";
-import { countRunes, useGameStore } from "@/store/gameStore";
+import { countRunes, isQuestEnding, useGameStore } from "@/store/gameStore";
 
 /**
  * Rune progress, as three dots rather than a counter. Slots are fixed to
@@ -45,7 +45,10 @@ function RuneProgress({ reducedMotion }: { reducedMotion: boolean }) {
  */
 export function HUD({ reducedMotion }: { reducedMotion: boolean }) {
   const phase = useGameStore((state) => state.phase);
-  const visible = phase !== "LOADING" && phase !== "INTRO";
+  // Gameplay HUD retires once the quest starts ending — the registration form
+  // and the ending own the screen from there.
+  const visible =
+    phase !== "LOADING" && phase !== "INTRO" && !isQuestEnding(phase);
 
   return (
     <div

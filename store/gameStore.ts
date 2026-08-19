@@ -3,10 +3,11 @@ import { create } from "zustand";
 import { RUNE_ORDER, type RuneId } from "@/lib/runes";
 
 /**
- * LOADING -> INTRO -> PLAYING is the Sprint 1A spine. DISCOVERY and
- * PORTAL_OPEN are transient: both hand control back to PLAYING when they
- * finish, so everything that keys off PLAYING keeps working unchanged.
- * REGISTER and COMPLETE are declared for the sprint after this one.
+ * LOADING -> INTRO -> PLAYING is the spine. DISCOVERY and PORTAL_OPEN are
+ * transient and hand control back to PLAYING, so everything that keys off
+ * PLAYING keeps working unchanged.
+ *
+ * PORTAL_ENTERING onwards is one-way: the quest ends there.
  */
 export type GamePhase =
   | "LOADING"
@@ -14,8 +15,18 @@ export type GamePhase =
   | "PLAYING"
   | "DISCOVERY"
   | "PORTAL_OPEN"
+  | "PORTAL_ENTERING"
   | "REGISTER"
   | "COMPLETE";
+
+/** Phases where the world is no longer the player's to move around in. */
+export function isQuestEnding(phase: GamePhase) {
+  return (
+    phase === "PORTAL_ENTERING" ||
+    phase === "REGISTER" ||
+    phase === "COMPLETE"
+  );
+}
 
 export type RuneState = Record<RuneId, boolean>;
 
@@ -32,9 +43,13 @@ type GameState = {
   activeRune: RuneId | null;
   /** Latched, so the activation sequence can only ever run once. */
   portalActivated: boolean;
+  /** Latched the same way, so the player can only ever enter once. */
+  portalEntered: boolean;
   /** Drives the one camera move in the activation sequence. */
   cameraFocus: "player" | "portal";
   bannerVisible: boolean;
+  /** Bumped by a restart so the player can be put back at the spawn. */
+  resetKey: number;
 
   setPhase: (phase: GamePhase) => void;
   markReady: () => void;
@@ -46,6 +61,11 @@ type GameState = {
   setCameraFocus: (focus: "player" | "portal") => void;
   setBannerVisible: (visible: boolean) => void;
   finishPortalActivation: () => void;
+
+  enterPortal: () => void;
+  beginRegistration: () => void;
+  completeQuest: () => void;
+  restartQuest: () => void;
 };
 
 const NO_RUNES: RuneState = { world: false, heroes: false, reward: false };
@@ -60,8 +80,10 @@ export const useGameStore = create<GameState>((set) => ({
   runes: NO_RUNES,
   activeRune: null,
   portalActivated: false,
+  portalEntered: false,
   cameraFocus: "player",
   bannerVisible: false,
+  resetKey: 0,
 
   setPhase: (phase) => set({ phase }),
   markReady: () =>
@@ -113,4 +135,43 @@ export const useGameStore = create<GameState>((set) => ({
       cameraFocus: "player",
       bannerVisible: false,
     }),
+
+  /**
+   * The gate only opens for someone carrying all three runes, and only once —
+   * proximity is checked every frame, so the latch is what keeps the entry
+   * sequence from restarting on the frames that follow.
+   */
+  enterPortal: () =>
+    set((state) => {
+      if (state.phase !== "PLAYING") return state;
+      if (!state.portalActivated || state.portalEntered) return state;
+      return {
+        phase: "PORTAL_ENTERING",
+        portalEntered: true,
+        controlsEnabled: false,
+        cameraFocus: "portal",
+      };
+    }),
+
+  beginRegistration: () =>
+    set((state) =>
+      state.phase === "PORTAL_ENTERING" ? { phase: "REGISTER" } : state,
+    ),
+
+  completeQuest: () =>
+    set((state) => (state.phase === "REGISTER" ? { phase: "COMPLETE" } : state)),
+
+  /** Puts the whole run back to the start without reloading the page. */
+  restartQuest: () =>
+    set((state) => ({
+      phase: "PLAYING",
+      controlsEnabled: true,
+      runes: NO_RUNES,
+      activeRune: null,
+      portalActivated: false,
+      portalEntered: false,
+      cameraFocus: "player",
+      bannerVisible: false,
+      resetKey: state.resetKey + 1,
+    })),
 }));

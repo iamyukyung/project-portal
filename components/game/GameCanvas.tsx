@@ -17,13 +17,15 @@ import { HUD } from "@/components/ui/HUD";
 import { IntroScreen } from "@/components/ui/IntroScreen";
 import { Minimap } from "@/components/ui/Minimap";
 import { PortalBanner } from "@/components/ui/PortalBanner";
+import { QuestComplete } from "@/components/ui/QuestComplete";
+import { Registration } from "@/components/ui/Registration";
 import { RuneSheet } from "@/components/ui/RuneSheet";
 import {
   usePrefersReducedMotion,
   useResponsiveGameSettings,
 } from "@/hooks/useResponsiveGameSettings";
 import { usePlayerInput } from "@/hooks/usePlayerInput";
-import { useGameStore } from "@/store/gameStore";
+import { isQuestEnding, useGameStore } from "@/store/gameStore";
 import { isWebGLAvailable } from "@/lib/webgl";
 import { CAMERA_DIR, PLAYER, SPAWN } from "@/lib/worldLayout";
 
@@ -39,6 +41,16 @@ const INTRO_TRAVEL_MS = 1100;
 const ACTIVATION_STEPS = {
   full: { focusPortal: 350, bannerIn: 1150, bannerOut: 2500, focusPlayer: 2650, done: 3300 },
   reduced: { bannerIn: 150, bannerOut: 1500, done: 1800 },
+} as const;
+
+/**
+ * Portal entry, ~1.7s: the gate draws the player in while its light floods the
+ * screen, and the form arrives as the world washes out. Reduced motion drops
+ * the pull and runs it as a short fade instead.
+ */
+const ENTRY_STEPS = {
+  full: { veil: 550, register: 1700 },
+  reduced: { veil: 120, register: 900 },
 } as const;
 
 /**
@@ -81,6 +93,7 @@ export function GameCanvas() {
   const finishPortalActivation = useGameStore(
     (state) => state.finishPortalActivation,
   );
+  const beginRegistration = useGameStore((state) => state.beginRegistration);
 
   const webglSupported = useSyncExternalStore(
     subscribeWebGL,
@@ -140,6 +153,14 @@ export function GameCanvas() {
     setBannerVisible,
     finishPortalActivation,
   ]);
+
+  // Portal entry. `enterPortal` is latched in the store, so this runs once.
+  const entrySteps = reducedMotion ? ENTRY_STEPS.reduced : ENTRY_STEPS.full;
+  useEffect(() => {
+    if (phase !== "PORTAL_ENTERING") return;
+    const timer = setTimeout(beginRegistration, entrySteps.register);
+    return () => clearTimeout(timer);
+  }, [phase, entrySteps, beginRegistration]);
 
   // Only read at Canvas creation; FollowCamera owns the camera afterwards.
   const initialCamera = useMemo(() => {
@@ -206,6 +227,32 @@ export function GameCanvas() {
         reducedMotion={reducedMotion}
       />
       <PortalBanner reducedMotion={reducedMotion} />
+
+      {/*
+        The gate's light washing over the screen. One CSS layer rather than a
+        post-processing pass — it also keeps the world legible behind the form.
+      */}
+      {isQuestEnding(phase) && (
+        <div
+          className="pointer-events-none fixed inset-0 z-30"
+          aria-hidden="true"
+          style={{
+            // Mounted only for the ending phases, so the fade is an animation
+            // with a delay rather than state — it replays cleanly on a restart.
+            animation: `portal-veil-in 900ms ease ${entrySteps.veil}ms both`,
+            background:
+              "radial-gradient(ellipse at center, rgba(150,220,235,0.55) 0%, rgba(12,28,38,0.9) 70%)",
+            backdropFilter: "blur(6px)",
+          }}
+        />
+      )}
+
+      <Registration
+        isTouch={settings?.isTouch ?? false}
+        reducedMotion={reducedMotion}
+      />
+      <QuestComplete reducedMotion={reducedMotion} />
+
       {settings?.isTouch && <FloatingJoystick />}
     </div>
   );

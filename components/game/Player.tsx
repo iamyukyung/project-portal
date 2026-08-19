@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CapsuleCollider, RigidBody, type RapierRigidBody } from "@react-three/rapier";
 import * as THREE from "three";
@@ -21,6 +21,10 @@ const FOOT_OFFSET = PLAYER.halfHeight + PLAYER.radius;
 const TURN_DEADZONE = 0.08;
 /** Stand-in while controls are still locked during the intro camera travel. */
 const ZERO_MOVE = { x: 0, z: 0, magnitude: 0 } as const;
+/** How hard the open gate draws the player in. Gentle — a pull, not a yank. */
+const PORTAL_PULL = 0.55;
+/** Close enough to the gate's centre to stop pulling. */
+const PORTAL_PULL_ARRIVE = 0.4;
 
 /** Interpolates an angle along the shorter arc, framerate independently. */
 function dampAngle(
@@ -123,6 +127,23 @@ export function Player({ positionRef, movement, reducedMotion }: PlayerProps) {
   const stride = useRef(0);
 
   const controlsEnabled = useGameStore((state) => state.controlsEnabled);
+  const phase = useGameStore((state) => state.phase);
+  const resetKey = useGameStore((state) => state.resetKey);
+  /** Reused so the pull never allocates per frame. */
+  const pull = useRef({ x: 0, z: 0, magnitude: 0 });
+
+  // "다시 탐험하기" puts the run back to the start without a page reload.
+  useEffect(() => {
+    if (resetKey === 0) return;
+    const body = bodyRef.current;
+    if (!body) return;
+    body.setTranslation(
+      { x: SPAWN.x, y: PLAYER.centerY, z: SPAWN.z },
+      true,
+    );
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    velocity.current.set(0, 0);
+  }, [resetKey]);
 
   useLayoutEffect(() => {
     // YXZ lets us layer a forward lean on top of the yaw without the two
@@ -142,9 +163,27 @@ export function Player({ positionRef, movement, reducedMotion }: PlayerProps) {
     // Read the position first: click-to-move resolves against it, and its own
     // progress is what the stall guard watches.
     const translation = body.translation();
-    const move = controlsEnabled
-      ? readMoveVector(translation.x, translation.z, dt)
-      : ZERO_MOVE;
+
+    let move: { x: number; z: number; magnitude: number };
+    if (phase === "PORTAL_ENTERING") {
+      // Drawn towards the gate through the same velocity system as everything
+      // else — a short controlled walk, never a teleport. Reduced motion skips
+      // the pull and lets the transition carry it instead.
+      const distance = Math.hypot(translation.x, translation.z);
+      if (reducedMotion || distance < PORTAL_PULL_ARRIVE) {
+        move = ZERO_MOVE;
+      } else {
+        pull.current.x = (-translation.x / distance) * PORTAL_PULL;
+        pull.current.z = (-translation.z / distance) * PORTAL_PULL;
+        pull.current.magnitude = PORTAL_PULL;
+        move = pull.current;
+      }
+    } else if (controlsEnabled) {
+      move = readMoveVector(translation.x, translation.z, dt);
+    } else {
+      move = ZERO_MOVE;
+    }
+
     const { x: dirX, z: dirZ, magnitude } = move;
 
     // Ease into and out of motion, but stay responsive: deceleration is

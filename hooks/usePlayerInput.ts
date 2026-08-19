@@ -248,6 +248,17 @@ export function clearKeyboardInput() {
 }
 
 /**
+ * Drops every source at once. Used when the game takes control away from the
+ * player — entering the portal, for instance — so nothing that was held down
+ * at that moment can survive into the cinematic or outlive it.
+ */
+export function resetAllMovementInput() {
+  clearKeyboardInput();
+  clearJoystickInput();
+  clearPointerTarget();
+}
+
+/**
  * Binds WASD / arrow keys while `enabled`. The joystick and the click-to-move
  * ground feed their own entry points, so touch, mouse and keyboard coexist on
  * hybrid devices.
