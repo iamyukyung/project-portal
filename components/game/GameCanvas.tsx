@@ -15,17 +15,43 @@ import { ControlsHint } from "@/components/ui/ControlsHint";
 import { FloatingJoystick } from "@/components/ui/FloatingJoystick";
 import { HUD } from "@/components/ui/HUD";
 import { IntroScreen } from "@/components/ui/IntroScreen";
+import { Minimap } from "@/components/ui/Minimap";
+import { PortalBanner } from "@/components/ui/PortalBanner";
+import { QuestComplete } from "@/components/ui/QuestComplete";
+import { Registration } from "@/components/ui/Registration";
+import { RuneSheet } from "@/components/ui/RuneSheet";
 import {
   usePrefersReducedMotion,
   useResponsiveGameSettings,
 } from "@/hooks/useResponsiveGameSettings";
 import { usePlayerInput } from "@/hooks/usePlayerInput";
-import { useGameStore } from "@/store/gameStore";
+import { isQuestEnding, useGameStore } from "@/store/gameStore";
 import { isWebGLAvailable } from "@/lib/webgl";
 import { CAMERA_DIR, PLAYER, SPAWN } from "@/lib/worldLayout";
 
 /** Matches the intro camera travel in FollowCamera. */
 const INTRO_TRAVEL_MS = 1100;
+
+/**
+ * Portal activation, start to finish in ~3.3s: the rune absorbs, a beat of
+ * nothing, the camera swings to the gate as it lights, the line lands, then
+ * the camera comes back and control returns. Reduced motion keeps the beats
+ * but drops the camera move, so it runs shorter.
+ */
+const ACTIVATION_STEPS = {
+  full: { focusPortal: 350, bannerIn: 1150, bannerOut: 2500, focusPlayer: 2650, done: 3300 },
+  reduced: { bannerIn: 150, bannerOut: 1500, done: 1800 },
+} as const;
+
+/**
+ * Portal entry, ~1.7s: the gate draws the player in while its light floods the
+ * screen, and the form arrives as the world washes out. Reduced motion drops
+ * the pull and runs it as a short fade instead.
+ */
+const ENTRY_STEPS = {
+  full: { veil: 550, register: 1700 },
+  reduced: { veil: 120, register: 900 },
+} as const;
 
 /**
  * WebGL support never changes for the life of the document, so the store is a
@@ -62,6 +88,12 @@ export function GameCanvas() {
   const reducedMotion = usePrefersReducedMotion();
   const phase = useGameStore((state) => state.phase);
   const setControlsEnabled = useGameStore((state) => state.setControlsEnabled);
+  const setCameraFocus = useGameStore((state) => state.setCameraFocus);
+  const setBannerVisible = useGameStore((state) => state.setBannerVisible);
+  const finishPortalActivation = useGameStore(
+    (state) => state.finishPortalActivation,
+  );
+  const beginRegistration = useGameStore((state) => state.beginRegistration);
 
   const webglSupported = useSyncExternalStore(
     subscribeWebGL,
@@ -89,6 +121,46 @@ export function GameCanvas() {
     const timer = setTimeout(() => setControlsEnabled(true), INTRO_TRAVEL_MS);
     return () => clearTimeout(timer);
   }, [phase, reducedMotion, setControlsEnabled]);
+
+  // The portal activation sequence. Entering PORTAL_OPEN is already latched by
+  // the store, so this can only ever run once per session.
+  useEffect(() => {
+    if (phase !== "PORTAL_OPEN") return;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (ms: number, run: () => void) =>
+      timers.push(setTimeout(run, ms));
+
+    if (reducedMotion) {
+      const step = ACTIVATION_STEPS.reduced;
+      at(step.bannerIn, () => setBannerVisible(true));
+      at(step.bannerOut, () => setBannerVisible(false));
+      at(step.done, finishPortalActivation);
+    } else {
+      const step = ACTIVATION_STEPS.full;
+      at(step.focusPortal, () => setCameraFocus("portal"));
+      at(step.bannerIn, () => setBannerVisible(true));
+      at(step.bannerOut, () => setBannerVisible(false));
+      at(step.focusPlayer, () => setCameraFocus("player"));
+      at(step.done, finishPortalActivation);
+    }
+
+    return () => timers.forEach(clearTimeout);
+  }, [
+    phase,
+    reducedMotion,
+    setCameraFocus,
+    setBannerVisible,
+    finishPortalActivation,
+  ]);
+
+  // Portal entry. `enterPortal` is latched in the store, so this runs once.
+  const entrySteps = reducedMotion ? ENTRY_STEPS.reduced : ENTRY_STEPS.full;
+  useEffect(() => {
+    if (phase !== "PORTAL_ENTERING") return;
+    const timer = setTimeout(beginRegistration, entrySteps.register);
+    return () => clearTimeout(timer);
+  }, [phase, entrySteps, beginRegistration]);
 
   // Only read at Canvas creation; FollowCamera owns the camera afterwards.
   const initialCamera = useMemo(() => {
@@ -135,6 +207,13 @@ export function GameCanvas() {
       )}
 
       <HUD reducedMotion={reducedMotion} />
+      {settings && (
+        <Minimap
+          isTouch={settings.isTouch}
+          isPortrait={settings.isPortrait}
+          reducedMotion={reducedMotion}
+        />
+      )}
       <IntroScreen
         isTouch={settings?.isTouch ?? false}
         reducedMotion={reducedMotion}
@@ -143,6 +222,37 @@ export function GameCanvas() {
         isTouch={settings?.isTouch ?? false}
         reducedMotion={reducedMotion}
       />
+      <RuneSheet
+        isTouch={settings?.isTouch ?? false}
+        reducedMotion={reducedMotion}
+      />
+      <PortalBanner reducedMotion={reducedMotion} />
+
+      {/*
+        The gate's light washing over the screen. One CSS layer rather than a
+        post-processing pass — it also keeps the world legible behind the form.
+      */}
+      {isQuestEnding(phase) && (
+        <div
+          className="pointer-events-none fixed inset-0 z-30"
+          aria-hidden="true"
+          style={{
+            // Mounted only for the ending phases, so the fade is an animation
+            // with a delay rather than state — it replays cleanly on a restart.
+            animation: `portal-veil-in 900ms ease ${entrySteps.veil}ms both`,
+            background:
+              "radial-gradient(ellipse at center, rgba(150,220,235,0.55) 0%, rgba(12,28,38,0.9) 70%)",
+            backdropFilter: "blur(6px)",
+          }}
+        />
+      )}
+
+      <Registration
+        isTouch={settings?.isTouch ?? false}
+        reducedMotion={reducedMotion}
+      />
+      <QuestComplete reducedMotion={reducedMotion} />
+
       {settings?.isTouch && <FloatingJoystick />}
     </div>
   );

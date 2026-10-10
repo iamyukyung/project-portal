@@ -63,6 +63,69 @@ body {
   cursor: pointer;
 }
 
+/* Minimap: portal ring while the activation sequence is on screen. */
+@keyframes minimap-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.08);
+  }
+}
+
+.minimap-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: minimap-pulse 900ms ease-in-out infinite;
+}
+
+/* Minimap: one-shot acknowledgement when a rune is claimed. */
+@keyframes minimap-claimed {
+  0% {
+    opacity: 0.2;
+    transform: scale(1.9);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.minimap-claimed {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: minimap-claimed 520ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+/* The gate's light flooding the screen as the player is drawn in. */
+@keyframes portal-veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The ending arriving — the strongest motion in the whole experience. */
+@keyframes quest-complete-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes portal-pulse {
   0%,
   100% {

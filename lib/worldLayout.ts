@@ -106,8 +106,10 @@ export const COLORS = {
   grass: ["#79a44f", "#8cb75c", "#6c9748"],
   mountain: ["#7f9a86", "#6f8a79"],
   stone: "#a3a89e",
-  portal: "#7d8fd8",
-  portalEmissive: "#2d3a76",
+  /** The portal ring lerps between these as runes are collected. */
+  portalDormant: "#8f959d",
+  portalActive: "#7d8fd8",
+  portalGlow: "#4a63d8",
   rune: "#e3c66d",
   runeEmissive: "#6b5320",
   player: {
@@ -299,6 +301,77 @@ export const LANDMARK_STONES: Placement[] = LANDMARKS.flatMap((landmark, i) =>
     };
   }),
 );
+
+/**
+ * Per-landmark composition, so the three Rune sites read as different places
+ * from across the world rather than three copies of one plinth:
+ *
+ *   WORLD   broken columns, like the remains of something older
+ *   HEROES  three standing figures, one per archetype
+ *   REWARD  a pair of posts flanking the plinth, a stand for something valuable
+ *
+ * Decoration only — no colliders. They sit outside the discovery radius so
+ * they can never block the approach to a Rune.
+ */
+const LANDMARK_HEIGHT = { figure: 1.1, post: 0.85 } as const;
+/** Y the HEROES heads sit at, just above their bodies. */
+export const FIGURE_HEAD_HEIGHT = LANDMARK_HEIGHT.figure + 0.14;
+
+function around(index: number, radius: number, degrees: number) {
+  const angle = (degrees * Math.PI) / 180;
+  return {
+    x: LANDMARKS[index].x + Math.cos(angle) * radius,
+    z: LANDMARKS[index].z + Math.sin(angle) * radius,
+  };
+}
+
+export const LANDMARK_PILLARS: Placement[] = [
+  // WORLD — five stubs of a ruined colonnade, deliberately uneven.
+  ...[
+    { deg: 25, scale: 1.25, tilt: 0.06 },
+    { deg: 95, scale: 0.62, tilt: 0.14 },
+    { deg: 160, scale: 1.05, tilt: -0.05 },
+    { deg: 230, scale: 0.48, tilt: 0.11 },
+    { deg: 305, scale: 0.86, tilt: -0.09 },
+  ].map(({ deg, scale, tilt }, k) => ({
+    ...around(0, 1.95, deg),
+    scale,
+    rotation: (deg * Math.PI) / 180,
+    tiltX: tilt,
+    tiltZ: tilt * 0.5,
+    variant: k % 3,
+  })),
+
+  // HEROES — three figures of equal height, facing the plinth.
+  ...[210, 270, 330].map((deg, k) => ({
+    ...around(1, 1.75, deg),
+    scale: LANDMARK_HEIGHT.figure,
+    rotation: (deg * Math.PI) / 180 + Math.PI,
+    tiltX: 0,
+    tiltZ: 0,
+    variant: k % 3,
+  })),
+
+  // REWARD — two posts flanking the approach.
+  ...[50, 130].map((deg, k) => ({
+    ...around(2, 1.65, deg),
+    scale: LANDMARK_HEIGHT.post,
+    rotation: (deg * Math.PI) / 180,
+    tiltX: 0,
+    tiltZ: 0,
+    variant: k % 3,
+  })),
+];
+
+/** Heads for the HEROES figures. Same footprint, one batch of their own. */
+export const FIGURE_HEADS: Placement[] = [210, 270, 330].map((deg, k) => ({
+  ...around(1, 1.75, deg),
+  scale: 1,
+  rotation: (deg * Math.PI) / 180,
+  tiltX: 0,
+  tiltZ: 0,
+  variant: k % 3,
+}));
 
 /** Segment count for the invisible wall ring around the walkable area. */
 export const BOUNDARY_SEGMENTS = 18;

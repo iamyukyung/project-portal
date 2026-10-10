@@ -9,6 +9,9 @@ import { FollowCamera } from "./FollowCamera";
 import { SceneEnvironment } from "./Environment";
 import { GroundPointer } from "./GroundPointer";
 import { Player } from "./Player";
+import { Portal } from "./Portal";
+import { PortalEntry } from "./PortalEntry";
+import { Runes } from "./Runes";
 import { World } from "./World";
 import type { GameSettings } from "@/hooks/useResponsiveGameSettings";
 import { useGameStore } from "@/store/gameStore";
@@ -52,25 +55,30 @@ export function GameScene({
       />
 
       {/*
-        Click-to-move is desktop only. Leaving these out on touch also leaves
-        the scene with zero interactive objects, so R3F skips raycasting
-        entirely on every pointer move — which is where the phones benefit.
+        Both platforms pick destinations off the ground, but only desktop does
+        it through R3F's own pointer events. On touch the gesture layer in the
+        DOM decides tap from drag first, so the scene keeps zero interactive
+        objects and R3F skips raycasting on every pointer move.
       */}
-      {!settings.isTouch && (
-        <>
-          <GroundPointer onHoverChange={onGroundHoverChange} />
-          <DestinationMarker reducedMotion={reducedMotion} />
-        </>
-      )}
+      <GroundPointer
+        interactive={!settings.isTouch}
+        onHoverChange={onGroundHoverChange}
+      />
+      <DestinationMarker reducedMotion={reducedMotion} />
+
+      <Portal reducedMotion={reducedMotion} />
 
       <Physics gravity={[0, -22, 0]} timeStep="vary">
         <SceneReady />
-        <World reducedMotion={reducedMotion} />
+        <World />
         <Player
           positionRef={playerPosition}
           movement={settings.movement}
           reducedMotion={reducedMotion}
         />
+        {/* Inside Physics so they read the player's post-step position. */}
+        <Runes positionRef={playerPosition} reducedMotion={reducedMotion} />
+        <PortalEntry positionRef={playerPosition} />
       </Physics>
     </>
   );
